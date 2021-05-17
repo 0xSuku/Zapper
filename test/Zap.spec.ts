@@ -97,6 +97,38 @@ describe("Zap", function () {
     await logCurrentBalances();
   });
 
+  it("Zap to previously created and filled pool", async function () {
+
+    // Fill the LP with some tokens
+    await wethPartner.transfer(wethPair.address, initialPairWETHPartnerAmount);
+    await weth.deposit({ value: initialPairWETHAmount });
+    await weth.transfer(wethPair.address, initialPairWETHAmount);
+    await wethPair.mint(wallet.address, overrides);
+    // Burn the LP!
+    await wethPair.transfer('0x000000000000000000000000000000000000dead', await wethPair.balanceOf(walletAddress));
+
+    logBasicInfo();
+    await logCurrentBalances();
+
+    // TODO: This value may change at anytime, should be calculated correctly
+    const lpBought = BigNumber.from("689860274328339047");
+    const wethAmount = expandTo18Decimals(1);
+    await zap.deployed();
+    await expect(await zap.ZapToken(weth.address, wethPair.address, wethAmount, true))
+      .to.emit(weth, 'Transfer')
+      .withArgs(wallet.address, zap.address, wethAmount)
+      /* ------------------ "Debugging" ------------------
+      .to.emit(zap, '_swapTokens')
+      .withArgs(weth.address, wethPartner.address, weth.address, wethAmount)
+      .to.emit(zap, '_swapTokensForTokens')
+      .withArgs(initialPairWETHPartnerAmount, initialPairWETHAmount, token0Bought, token1Bought)
+      */
+      .to.emit(zap, 'zapToken')
+      .withArgs(walletAddress, wethPair.address, lpBought)
+
+      await logCurrentBalances();
+  });
+
   function logBasicInfo() {
     console.log('Address:                 ' + weth.address);
     console.log('PARTNER Address:         ' + wethPartner.address);
