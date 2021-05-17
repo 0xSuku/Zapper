@@ -7,7 +7,6 @@ import WETH9Json from '../artifacts/contracts/test/WETH9.sol/WETH9.json';
 import UniswapV2Router02Json from '../../uniswap-v2-periphery/build/UniswapV2Router02.json';
 import UniswapV2FactoryJson from '../../uniswap-v2-core/build/UniswapV2Factory.json';
 import { BigNumber, Contract } from 'ethers';
-import UniswapV2Factory from '@uniswap/v2-core/build/UniswapV2Factory.json';
 import IUniswapV2Pair from '@uniswap/v2-core/build/IUniswapV2Pair.json';
 
 export function expandTo18Decimals(n: number): BigNumber {
