@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: UNLICENCED
 pragma solidity 0.6.12;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -24,7 +24,7 @@ contract Zap is ReentrancyGuard, Ownable  {
     ) public {
         uniswapV2Factory = IUniswapV2Factory(_uniFactory);
         uniswapRouter = IUniswapV2Router02(_uniRouter);
-        wbnbAddress = _wbnbAddress; //0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
+        wbnbAddress = _wbnbAddress;
     }
 
     uint256 private constant deadline = 0xf000000000000000000000000000000000000000000000000000000000000000;
@@ -34,6 +34,7 @@ contract Zap is ReentrancyGuard, Ownable  {
     IUniswapV2Router02 private uniswapRouter;
 
     event zapToken(address sender, address pool, uint256 lpAmount);
+    event test(address sender, address pool, uint256 lpAmount);
 
     /**
     @notice Creates a pair using uniswap test router/factory
@@ -71,7 +72,7 @@ contract Zap is ReentrancyGuard, Ownable  {
         uint256 _amount,
         bool _donateLeftovers
     ) internal returns (uint256) {
-        /*(address token0Address, address token1Address) = _getPairTokens(_pairAddress);
+        (address token0Address, address token1Address) = _getPairTokens(_pairAddress);
 
         (uint256 token0Bought, uint256 token1Bought) = _swapTokens(
             _sentToken,
@@ -79,7 +80,7 @@ contract Zap is ReentrancyGuard, Ownable  {
             token1Address,
             _amount
         );
-    
+
         return
             _uniswapRouterDeposit(
                 token0Address,
@@ -87,8 +88,7 @@ contract Zap is ReentrancyGuard, Ownable  {
                 token0Bought,
                 token1Bought,
                 _donateLeftovers
-            );*/
-            return 10;
+            );
     }
 
     // Improvement, did it on another function to declare it as view.
@@ -175,7 +175,7 @@ contract Zap is ReentrancyGuard, Ownable  {
                 amountToSwap
             );
             token1Bought = _amount.sub(amountToSwap);
-        }        
+        }
     }
 
     function calculateSwapInAmount(uint256 reserveFromPair, uint256 _amount)

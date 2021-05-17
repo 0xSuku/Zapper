@@ -1,4 +1,4 @@
-import { expect } from 'chai';
+import { assert, expect } from 'chai';
 import { ethers } from "hardhat";
 import { deployContract, MockProvider } from 'ethereum-waffle';
 import ERC20Json from '../artifacts/contracts/test/ERC20.sol/ERC20.json';
@@ -15,6 +15,18 @@ export function expandTo18Decimals(n: number): BigNumber {
 
 const overrides = {
   gasLimit: 9999999
+}
+
+const expectThrow = async (promise: Promise<BigNumber>, messageKeyword: string) => {
+  try {
+    await promise;
+  } catch (err) {
+    if (messageKeyword) {
+      assert(err.message && err.message.indexOf(messageKeyword) > -1, 'Wrong error thrown');
+    }
+    return;
+  }
+  assert(false, 'Expected throw not received');
 }
 
 describe("Zap", function () {
@@ -36,24 +48,23 @@ describe("Zap", function () {
 
   before(async () => {
     walletAddress = await wallet.getAddress();
-    uniswapV2Factory = await deployContract(wallet, UniswapV2FactoryJson, [wallet.address]);
+    uniswapV2Factory = await deployContract(wallet, UniswapV2FactoryJson, [walletAddress]);
+    weth = await deployContract(wallet, WETH9Json);
     const uniswapV2Router02 = await deployContract(wallet, UniswapV2Router02Json, [uniswapV2Factory.address, weth.address], overrides);
     await uniswapV2Router02.deployed();
-    
-    weth = await deployContract(wallet, WETH9Json);
-    wethPartner = await deployContract(wallet, ERC20Json, [expandTo18Decimals(100)]);
+
     zap = await deployContract(wallet, ZapJson, [uniswapV2Factory.address, uniswapV2Router02.address, weth.address], overrides);
-    
-    // Get some weth
-    await weth.deployed();
+
     await weth.deposit({ value: expandTo18Decimals(20) });
     await zap.deployed();
 
-    // Allowance to zap contract
+    // Allowances
     await weth.approve(zap.address, ethers.constants.MaxUint256);
   });
 
   before("Create pair", async () => {
+    wethPartner = await deployContract(wallet, ERC20Json, [expandTo18Decimals(100)]);
+    await wethPartner.deployed()
     await uniswapV2Factory.createPair(wethPartner.address, weth.address);
 
     const wethPairAddress = await uniswapV2Factory.getPair(weth.address, wethPartner.address);
@@ -64,18 +75,10 @@ describe("Zap", function () {
   })
 
   it("Zap to empty pool", async function () {
-
-    logBasicInfo();
-    await logCurrentBalances();
-    // TODO: This value may change at anytime, should be calculated correctly
-    const lpBought = BigNumber.from("689860274328339047");
     const wethAmount = expandTo18Decimals(1);
-    await expect(await zap.ZapToken(weth.address, wethPair.address, wethAmount, true))
-      .to.emit(weth, 'Transfer')
-      .withArgs(wallet.address, zap.address, wethAmount)
-      .to.emit(zap, 'zapToken')
-      .withArgs(walletAddress, wethPair.address, lpBought);
-    await logCurrentBalances();
+
+    const tx = zap.ZapToken(weth.address, wethPair.address, wethAmount, true);
+    await expectThrow(tx, 'INSUFFICIENT_LIQUIDITY');
   });
 
   it("Zap to previously created and filled pool", async function () {
@@ -88,26 +91,20 @@ describe("Zap", function () {
     // Burn the LP!
     await wethPair.transfer('0x000000000000000000000000000000000000dead', await wethPair.balanceOf(walletAddress));
 
-    logBasicInfo();
-    await logCurrentBalances();
+    // logBasicInfo();
+    // await logCurrentBalances();
 
     // TODO: This value may change at anytime, should be calculated correctly
     const lpBought = BigNumber.from("689860274328339047");
     const wethAmount = expandTo18Decimals(1);
-    
+    await zap.deployed();
     await expect(await zap.ZapToken(weth.address, wethPair.address, wethAmount, true))
       .to.emit(weth, 'Transfer')
       .withArgs(wallet.address, zap.address, wethAmount)
-      /* ------------------ "Debugging" ------------------
-      .to.emit(zap, '_swapTokens')
-      .withArgs(weth.address, wethPartner.address, weth.address, wethAmount)
-      .to.emit(zap, '_swapTokensForTokens')
-      .withArgs(initialPairWETHPartnerAmount, initialPairWETHAmount, token0Bought, token1Bought)
-      */
       .to.emit(zap, 'zapToken')
       .withArgs(walletAddress, wethPair.address, lpBought);
 
-    await logCurrentBalances();
+    // await logCurrentBalances();
   });
 
   function logBasicInfo() {
