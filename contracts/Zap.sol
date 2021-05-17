@@ -71,7 +71,7 @@ contract Zap is ReentrancyGuard, Ownable  {
         uint256 _amount,
         bool _donateLeftovers
     ) internal returns (uint256) {
-        (address token0Address, address token1Address) = _getPairTokens(_pairAddress);
+        /*(address token0Address, address token1Address) = _getPairTokens(_pairAddress);
 
         (uint256 token0Bought, uint256 token1Bought) = _swapTokens(
             _sentToken,
@@ -87,7 +87,8 @@ contract Zap is ReentrancyGuard, Ownable  {
                 token0Bought,
                 token1Bought,
                 _donateLeftovers
-            );
+            );*/
+            return 10;
     }
 
     // Improvement, did it on another function to declare it as view.

@@ -36,16 +36,18 @@ describe("Zap", function () {
 
   before(async () => {
     walletAddress = await wallet.getAddress();
-    weth = await deployContract(wallet, WETH9Json)
     uniswapV2Factory = await deployContract(wallet, UniswapV2FactoryJson, [wallet.address]);
     const uniswapV2Router02 = await deployContract(wallet, UniswapV2Router02Json, [uniswapV2Factory.address, weth.address], overrides);
+    await uniswapV2Router02.deployed();
     
+    weth = await deployContract(wallet, WETH9Json);
     wethPartner = await deployContract(wallet, ERC20Json, [expandTo18Decimals(100)]);
     zap = await deployContract(wallet, ZapJson, [uniswapV2Factory.address, uniswapV2Router02.address, weth.address], overrides);
     
     // Get some weth
-    const wethAmount = expandTo18Decimals(20);
-    await weth.deposit({ value: wethAmount });
+    await weth.deployed();
+    await weth.deposit({ value: expandTo18Decimals(20) });
+    await zap.deployed();
 
     // Allowance to zap contract
     await weth.approve(zap.address, ethers.constants.MaxUint256);
@@ -61,25 +63,6 @@ describe("Zap", function () {
     initialPairWETHPartnerAmount = expandTo18Decimals(40);
   })
 
-  it("Swap to weth works", async function () {
-
-    const oldBalance = await provider.getBalance(walletAddress);
-    const oldwethBalance = await weth.balanceOf(walletAddress);
-
-    // I've spent one on previous test
-    expect(oldwethBalance).to.eq(expandTo18Decimals(20));
-
-    const wethAmount = expandTo18Decimals(30);
-    await weth.deposit({ value: wethAmount });
-
-    const balance = await provider.getBalance(walletAddress);
-    const wethBalance = await weth.balanceOf(walletAddress);
-    
-    expect(oldwethBalance).to.lt(wethBalance);
-    expect(oldBalance).to.gt(balance);
-    expect(wethBalance).to.eq(expandTo18Decimals(50));
-  });
-
   it("Zap to empty pool", async function () {
 
     logBasicInfo();
@@ -87,7 +70,6 @@ describe("Zap", function () {
     // TODO: This value may change at anytime, should be calculated correctly
     const lpBought = BigNumber.from("689860274328339047");
     const wethAmount = expandTo18Decimals(1);
-    await zap.deployed();
     await expect(await zap.ZapToken(weth.address, wethPair.address, wethAmount, true))
       .to.emit(weth, 'Transfer')
       .withArgs(wallet.address, zap.address, wethAmount)
@@ -112,7 +94,7 @@ describe("Zap", function () {
     // TODO: This value may change at anytime, should be calculated correctly
     const lpBought = BigNumber.from("689860274328339047");
     const wethAmount = expandTo18Decimals(1);
-    await zap.deployed();
+    
     await expect(await zap.ZapToken(weth.address, wethPair.address, wethAmount, true))
       .to.emit(weth, 'Transfer')
       .withArgs(wallet.address, zap.address, wethAmount)
@@ -123,9 +105,9 @@ describe("Zap", function () {
       .withArgs(initialPairWETHPartnerAmount, initialPairWETHAmount, token0Bought, token1Bought)
       */
       .to.emit(zap, 'zapToken')
-      .withArgs(walletAddress, wethPair.address, lpBought)
+      .withArgs(walletAddress, wethPair.address, lpBought);
 
-      await logCurrentBalances();
+    await logCurrentBalances();
   });
 
   function logBasicInfo() {
@@ -141,6 +123,7 @@ describe("Zap", function () {
     console.log('ZAP t2 balance:          ' + await wethPartner.balanceOf(zap.address));
     console.log('PAIR weth balance:       ' + await weth.balanceOf(wethPair.address));
     console.log('PAIR t2 balance:         ' + await wethPartner.balanceOf(wethPair.address));
+    console.log('WALLET eth balance:      ' + await provider.getBalance(walletAddress));
     console.log('WALLET weth balance:     ' + await weth.balanceOf(walletAddress));
     console.log('WALLET t2 balance:       ' + await wethPartner.balanceOf(walletAddress));
     console.log('WALLET pair balance:     ' + await wethPair.balanceOf(walletAddress));
